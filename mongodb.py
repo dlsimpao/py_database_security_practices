@@ -1,101 +1,73 @@
-import csv
-import json
-import pymongo
+"""
+To create users for MongoDB, you must use the Atlas API or the Web UI.
+
+Resources: 
+https://www.mongodb.com/docs/atlas/reference/api-resources-spec/v2/
+"""
+
+from mongodb_helper import *
+
+config = dotenv_values(".env")
+RW_USR = config.get("MONGO_SANDBOX_RW_USR")
+RW_PWD = config.get("MONGO_SANDBOX_RW_PAS")
+MHS = config.get("MONGO_SANDBOX_HOST_NAME")
+
+AD_USR = config.get("MONGO_SANDBOX_ADMIN_USR")
+AD_PWD = config.get("MONGO_SANDBOX_ADMIN_PAS")
+MHS = config.get("MONGO_SANDBOX_HOST_NAME")
 
 
-def to_json(input_file, output_file):
-    health_data = []
-    with open(input_file, "r") as f, open (output_file, "w") as j:
-        reader = csv.DictReader(f)
+PJ_ID = config.get("MONGO_SANDBOX_PROJID")
+AK = config.get("MONGODB_SANDBOX_AK")
+SK = config.get("MONGODB_SANDBOX_SK")
 
-        for row in reader:
-            health_data.append(row)
+current_env = ["local","sandbox","sandbox_admin"]
 
-        jsonString = json.dumps(health_data, indent=4)
-        j.write(jsonString)
+parser = argparse.ArgumentParser(description="reads which mongodb environment to use")
+parser.add_argument("--db_env", choices=current_env, type=str)
 
-def import_demo_data(demo_type="health"):
-    if demo_type=="health":
-        file_dir_path = "data/healthcare-dataset/healthcare_dataset.json"
-    else:
-        raise ValueError("unknown type")
-    
-    with open(file_dir_path, "r") as f:
-        data = json.load(f)
-    
-    return data
+args = parser.parse_args()
 
-def set_or_get_db_col_pair(client, database_name, collection_name):
-    db = client[database_name]
-    col = db[collection_name]
-    
-    return (db, col)
-
-# creates custom roles # hard-coded for now
-def create_role(client, database, role_name):
-    try:
-        client[database].command("createRole", role_name, privileges=[{"resource":{"collection":"health_data"}, "actions":["find"]}], roles=[])
-        print(f"created role {role_name}")
-    except Exception as e:
-        print(e)
-        
-def create_user(client, database, user_name, password, roles):
-    try:
-        client[database].command("createUser", user_name, pwd=password, roles=roles)
-        print(f"created user {user_name}\t{password}")
-    except Exception as e:
-        print(e)
-        
-def create_admin(client, database, user_name, password, role):
-    try:
-        client[database].command("createUser", "Admin", pwd=password, roles=[role])
-        print(f"created user {user_name}\t{password}")
-    except Exception as e:
-        print(e)
-        
-def remove_user(client, database, user_name):
-    try:
-        client[database].command("dropUser", user_name)
-        print(f"dropped user {user_name} from {str(database)}")
-    except Exception as e:
-        print(e)
-        
 def main():
-   
-    # execute once; to create json dataset
-    to_json("data\healthcare-dataset\healthcare_dataset.csv","data\healthcare-dataset\healthcare_dataset.json")
-    
     # import data example: health
-    health_data = import_demo_data("health")
+    # health_data = import_demo_data("health")
 
-    # connect to local MongoDb instance
-    print("hello-mongo")
-    client = pymongo.MongoClient("mongodb://localhost:27017")
+    # # connect to local MongoDb instance
+    # print("connecting...")
+    
+    # if args.db_env == "local":
+    #     uri="mongodb://localhost:27017/"
+    # elif args.db_env == "sandbox":
+    #     uri=f"mongodb+srv://{RW_USR}:{RW_PWD}@{MHS}/"
+    # elif args.db_env == "sandbox_admin":
+    #     uri=f"mongodb+srv://{AD_USR}:{AD_PWD}@{MHS}/"
+    # else:
+    #     raise ValueError(f"unable to connect. please pass in --db_env argument {current_env}")
+    #     exit()
 
-    # creates or accesses demo database
-    demo_database, demo_collection = set_or_get_db_col_pair(client, database_name="demo", collection_name="health_data")
+    # client = connect_to_mongodb(uri)
+
+    # # creates or accesses demo database
+    # demo_database, demo_collection = set_or_get_db_col_pair(client, database_name="demo", collection_name="health_data")
     
-    # truncates
-    demo_collection.drop()
+    ### Database operations ### 
+    # # truncates
+    # demo_collection.drop()
     
-    # appends
-    view = demo_collection.insert_many(health_data)
+    # # # appends
+    # view = demo_collection.insert_many(health_data)
     # print(demo_database.list_collection_names())
     
-    # remove_user(client, "demo", "Admin")
-    # create_admin(client, "admin", "Admin", "admin_pass",role="dbOwner")
-    
-    # create_role(client, "demo", "health_reader")
 
-    # drop user
-    # remove_user(client, "demo", "dev_user")
-    
-    # # create user(database object, username, password, roles=['role':permissions..., 'db':'database'"])
-    # create_user(client, database="demo", user_name="dev_user", password="dev_password", roles=["health_reader"])
+    ### User operations ### 
+    # cannot create user through shell
+    create_user(api_public_key=AK,
+                api_private_key=SK,
+                project_id=PJ_ID)
 
-    users = client.admin.command("usersInfo", {"showPrivileges": True,"forAllDBs": True})["users"]
-    for user in users:
-        print(f"{user}")
+    # users = client.admin.command("usersInfo", {"showPrivileges": True,"forAllDBs": True})["users"]
+    # for user in users:
+    #     print(f"{user}")
         
         
         
